@@ -30,31 +30,53 @@ const Fabric: React.VFC<Props> = ({ width, height }) => {
 
             // マウス操作
             // http://fabricjs.com/fabric-intro-part-5
-            canvas.on('mouse:down', (event: fabric.IEvent<MouseEvent>) => {
+            canvas.on('mouse:down', (event: fabric.IEvent<MouseEvent | TouchEvent>) => {
                 if (enablePan.current) {
-                    const { clientX, clientY } = event.e;
+                    let x = 0;
+                    let y = 0;
+                    if (event.e.type === 'touchstart') {
+                        const { touches } = event.e as TouchEvent;
+                        const { clientX, clientY } = touches[0];
+                        x = clientX;
+                        y = clientY;
+                    } else {
+                        const { clientX, clientY } = event.e as MouseEvent;
+                        x = clientX;
+                        y = clientY;
+                    }
                     // 選択を解除する
                     canvas.selection = false;
                     // ドラッグ開始
                     isDragging.current = true;
                     lastPos.current = {
-                        x: clientX,
-                        y: clientY,
+                        x,
+                        y,
                     };
                 }
             });
-            canvas.on('mouse:move', (event: fabric.IEvent<MouseEvent>) => {
+            canvas.on('mouse:move', (event: fabric.IEvent<MouseEvent | TouchEvent>) => {
                 if (isDragging.current) {
-                    const { clientX, clientY } = event.e;
+                    let x = 0;
+                    let y = 0;
+                    if (event.e.type === 'touchmove') {
+                        const { touches } = event.e as TouchEvent;
+                        const { clientX, clientY } = touches[0];
+                        x = clientX;
+                        y = clientY;
+                    } else {
+                        const { clientX, clientY } = event.e as MouseEvent;
+                        x = clientX;
+                        y = clientY;
+                    }
                     const viewPort = canvas.viewportTransform;
                     if (viewPort) {
-                        viewPort[4] += clientX - lastPos.current.x;
-                        viewPort[5] += clientY - lastPos.current.y;
+                        viewPort[4] += x - lastPos.current.x;
+                        viewPort[5] += y - lastPos.current.y;
                         canvas.requestRenderAll();
                     }
                     lastPos.current = {
-                        x: clientX,
-                        y: clientY,
+                        x,
+                        y,
                     };
                 }
             });
