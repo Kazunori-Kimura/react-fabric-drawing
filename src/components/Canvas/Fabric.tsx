@@ -1,16 +1,18 @@
 import { fabric } from 'fabric';
 import { useCallback, useContext, useEffect, useRef } from 'react';
 import { CanvasContext } from '../../providers/CanvasProvider';
+import { CanvasSize } from '../../types/common';
 
-interface Props {
-    width: number;
-    height: number;
-}
+type Props = CanvasSize;
 
 interface Position {
     x: number;
     y: number;
 }
+
+// パンの範囲を A4横 に制限する
+const MaxPageWidth = 2970;
+const MaxPageHeight = 2100;
 
 const Fabric: React.VFC<Props> = ({ width, height }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -69,11 +71,42 @@ const Fabric: React.VFC<Props> = ({ width, height }) => {
                         y = clientY;
                     }
                     const viewPort = canvas.viewportTransform;
+                    const zoom = canvas.getZoom();
+                    const canvasWidth = canvas.getWidth();
+                    const canvasHeight = canvas.getHeight();
                     if (viewPort) {
-                        viewPort[4] += x - lastPos.current.x;
-                        viewPort[5] += y - lastPos.current.y;
+                        let px = viewPort[4];
+                        let py = viewPort[5];
+
+                        // ページ幅がキャンバス幅に収まる
+                        if (canvasWidth >= MaxPageWidth * zoom) {
+                            px = canvasWidth / 2 - (MaxPageWidth * zoom) / 2;
+                        } else {
+                            px += x - lastPos.current.x;
+                            if (px >= 0) {
+                                px = 0;
+                            } else if (px < canvasWidth - MaxPageWidth * zoom) {
+                                px = canvasWidth - MaxPageWidth * zoom;
+                            }
+                        }
+                        // ページ高がキャンバス高に収まる
+                        if (canvasHeight >= MaxPageHeight * zoom) {
+                            py = canvasHeight / 2 - (MaxPageHeight * zoom) / 2;
+                        } else {
+                            py += y - lastPos.current.y;
+                            if (py >= 0) {
+                                py = 0;
+                            } else if (py < canvasHeight - MaxPageHeight * zoom) {
+                                py = canvasHeight - MaxPageHeight * zoom;
+                            }
+                        }
+
+                        viewPort[4] = px;
+                        viewPort[5] = py;
+
                         canvas.requestRenderAll();
                     }
+
                     lastPos.current = {
                         x,
                         y,
@@ -94,6 +127,7 @@ const Fabric: React.VFC<Props> = ({ width, height }) => {
         }
     }, []);
 
+    // キャンバスサイズの変更
     useEffect(() => {
         if (fabricRef.current) {
             fabricRef.current.setDimensions({
