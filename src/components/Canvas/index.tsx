@@ -1,13 +1,12 @@
 import { Box } from '@mui/material';
 import { useEffect, useRef, useState } from 'react';
+import { CanvasSize } from '../../types/common';
 import Fabric from './Fabric';
-
-type DOMRect = { width: number; height: number };
 
 const Canvas: React.VFC = () => {
     const containerRef = useRef<HTMLDivElement>(null);
     // 表示領域
-    const [view, setView] = useState<DOMRect>({ width: 0, height: 0 });
+    const [view, setView] = useState<CanvasSize>({ width: 0, height: 0 });
 
     useEffect(() => {
         const observer = new ResizeObserver((entries) => {
