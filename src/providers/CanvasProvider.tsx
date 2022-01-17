@@ -5,7 +5,7 @@ interface Props {
     children: ReactNode;
 }
 
-interface ICanvasProvider {
+export interface ICanvasContext {
     mode: CanvasMode;
     setMode: Dispatch<SetStateAction<CanvasMode>>;
     strokeWidth: number;
@@ -15,7 +15,7 @@ interface ICanvasProvider {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-export const CanvasContext = createContext<ICanvasProvider>(undefined!);
+export const CanvasContext = createContext<ICanvasContext>(undefined!);
 
 const CanvasProvider: React.VFC<Props> = ({ children }) => {
     const [mode, setMode] = useState<CanvasMode>('pan');
