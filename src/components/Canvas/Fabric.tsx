@@ -1,9 +1,9 @@
 import { fabric } from 'fabric';
 import { useCallback, useContext, useEffect, useRef } from 'react';
-import { CanvasContext } from '../../providers/CanvasProvider';
+import { CanvasContext, ICanvasContext } from '../../providers/CanvasProvider';
 import { CanvasSize } from '../../types/common';
 
-type Props = CanvasSize;
+type Props = CanvasSize & ICanvasContext;
 
 interface Position {
     x: number;
@@ -14,15 +14,13 @@ interface Position {
 const MaxPageWidth = 2970;
 const MaxPageHeight = 2100;
 
-const Fabric: React.VFC<Props> = ({ width, height }) => {
+const Fabric: React.VFC<Props> = ({ width, height, mode, strokeWidth, strokeColor }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const fabricRef = useRef<fabric.Canvas>();
 
     const enablePan = useRef(false);
     const isDragging = useRef(false);
     const lastPos = useRef<Position>({ x: 0, y: 0 });
-
-    const { mode, strokeWidth, strokeColor } = useContext(CanvasContext);
 
     useEffect(() => {
         if (canvasRef.current) {
@@ -170,4 +168,9 @@ const Fabric: React.VFC<Props> = ({ width, height }) => {
     return <canvas ref={canvasRef} width={width} height={height} />;
 };
 
-export default Fabric;
+const ConnectedFabric: React.VFC<CanvasSize> = (props) => {
+    const context = useContext(CanvasContext);
+    return <Fabric {...context} {...props} />;
+};
+
+export default ConnectedFabric;
