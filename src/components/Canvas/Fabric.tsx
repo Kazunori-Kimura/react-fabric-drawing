@@ -14,6 +14,9 @@ interface Position {
 const MaxPageWidth = 2970;
 const MaxPageHeight = 2100;
 
+// 長押し
+const LongPressInterval = 1000;
+
 const Fabric: React.VFC<Props> = ({ width, height, mode, strokeWidth, strokeColor }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const fabricRef = useRef<fabric.Canvas>();
@@ -21,10 +24,13 @@ const Fabric: React.VFC<Props> = ({ width, height, mode, strokeWidth, strokeColo
     const enablePan = useRef(false);
     const isDragging = useRef(false);
     const lastPos = useRef<Position>({ x: 0, y: 0 });
+    const longpressTimer = useRef<NodeJS.Timer>();
 
     useEffect(() => {
         if (canvasRef.current) {
             const canvas = new fabric.Canvas(canvasRef.current, {
+                // 複数選択の可否
+                selection: true,
                 isDrawingMode: false,
             });
 
@@ -44,9 +50,8 @@ const Fabric: React.VFC<Props> = ({ width, height, mode, strokeWidth, strokeColo
                         x = clientX;
                         y = clientY;
                     }
-                    // 選択を解除する
-                    canvas.selection = false;
                     // ドラッグ開始
+                    canvas.selection = false; // 選択範囲の矩形を出さない
                     isDragging.current = true;
                     lastPos.current = {
                         x,
@@ -117,8 +122,69 @@ const Fabric: React.VFC<Props> = ({ width, height, mode, strokeWidth, strokeColo
                     canvas.setViewportTransform(viewPort);
                 }
                 // ドラッグ終了
-                canvas.selection = true;
                 isDragging.current = false;
+            });
+
+            canvas.on('selection:created', (event: fabric.IEvent<Event>) => {
+                console.log('selection:created: ', event);
+            });
+            canvas.on('selection:updated', (event: fabric.IEvent<Event>) => {
+                console.log('selection:updated: ', event);
+            });
+            canvas.on('mouse:dblclick', (event: fabric.IEvent<Event>) => {
+                console.log('mouse:dblclick: ', event);
+            });
+            canvas.on('touch:longpress', (event: fabric.IEvent<Event>) => {
+                console.log('touch:longpress: ', event);
+            });
+
+            // テスト的に 3つの長方形を表示する
+            const RectSize = { width: 160, height: 90 } as const;
+            const Interval = 25;
+            ['red', 'blue', 'green'].forEach((color, index) => {
+                const rect = new fabric.Rect({
+                    left: 100 + (Interval + RectSize.width) * index,
+                    top: 100 + (Interval + RectSize.height) * index,
+                    ...RectSize,
+                    name: `Rect_${index}`,
+                    data: { type: 'rect', index, color },
+                    lockRotation: true,
+                    fill: color,
+                });
+
+                rect.on('mousedown:before', (event: fabric.IEvent<Event>) => {
+                    console.log('Rect#mousedown:before: ', event);
+                });
+                rect.on('mousedown', (event: fabric.IEvent<Event>) => {
+                    console.log('Rect#mousedown: ', event);
+                    if (longpressTimer.current) {
+                        clearTimeout(longpressTimer.current);
+                        longpressTimer.current = undefined;
+                    }
+
+                    // 現在位置を保持する
+                    const { top: beforeTop, left: beforLeft } = rect.getBoundingRect(true, true);
+
+                    longpressTimer.current = setTimeout(() => {
+                        // 現在位置を取得
+                        const { top: afterTop, left: afterLeft } = rect.getBoundingRect(true, true);
+                        // mousedown 直後と位置が変わっていなければ longtap とする
+                        if (beforeTop === afterTop && beforLeft === afterLeft) {
+                            // longpress
+                            console.log('Rect#longpress', event);
+                        }
+                        longpressTimer.current = undefined;
+                    }, LongPressInterval);
+                });
+                rect.on('mouseup', (event: fabric.IEvent<Event>) => {
+                    console.log('Rect#mouseup: ', event);
+                    if (longpressTimer.current) {
+                        clearTimeout(longpressTimer.current);
+                        longpressTimer.current = undefined;
+                    }
+                });
+
+                canvas.add(rect);
             });
 
             fabricRef.current = canvas;

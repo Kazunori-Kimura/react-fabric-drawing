@@ -34,6 +34,7 @@
         "workbox-streams": "^5.1.4"
     },
     "scripts": {
+        "postinstall": "cd node_modules/fabric && npm run build_with_gestures",
         "start": "react-scripts start",
         "build": "react-scripts build",
         "test": "react-scripts test",
@@ -59,7 +60,8 @@
         ]
     },
     "devDependencies": {
-        "@types/fabric": "^4.5.6"
+        "@types/fabric": "^4.5.6",
+        "uglify-js": "^3.14.5"
     },
     "resolutions": {
         "mini-css-extract-plugin": "2.4.5"
