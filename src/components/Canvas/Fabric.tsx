@@ -2,6 +2,10 @@ import { fabric } from 'fabric';
 import { useCallback, useContext, useEffect, useRef } from 'react';
 import { CanvasContext, ICanvasContext } from '../../providers/CanvasProvider';
 import { CanvasSize } from '../../types/common';
+import { lerp, Vector, verticalNormalizeVector } from '../../util/vector';
+import { createArrow } from '../factory/arrow';
+import { createBeam } from '../factory/beam';
+import { createTrapezoid } from '../factory/trapezoid';
 
 type Props = CanvasSize & ICanvasContext;
 
@@ -123,6 +127,7 @@ const Fabric: React.VFC<Props> = ({ width, height, mode, strokeWidth, strokeColo
                 }
                 // ドラッグ終了
                 isDragging.current = false;
+                canvas.selection = true;
             });
 
             canvas.on('selection:created', (event: fabric.IEvent<Event>) => {
@@ -137,6 +142,32 @@ const Fabric: React.VFC<Props> = ({ width, height, mode, strokeWidth, strokeColo
             canvas.on('touch:longpress', (event: fabric.IEvent<Event>) => {
                 console.log('touch:longpress: ', event);
             });
+
+            // グリッドの描画
+            // TODO: 消しゴムで消えないようにする
+            const defaultGridLineProps: fabric.ILineOptions = {
+                stroke: '#eee',
+                strokeWidth: 1,
+                // イベントに反応させない
+                evented: false,
+                hasControls: false,
+                selectable: false,
+                // 出力対象外
+                excludeFromExport: true,
+                data: {
+                    type: 'background',
+                    excludeExport: true,
+                },
+            };
+
+            for (let y = 0; y <= MaxPageHeight; y += 25) {
+                const hl = new fabric.Line([0, y, MaxPageWidth, y], { ...defaultGridLineProps });
+                canvas.add(hl);
+            }
+            for (let x = 0; x <= MaxPageWidth; x += 25) {
+                const vl = new fabric.Line([x, 0, x, MaxPageHeight], { ...defaultGridLineProps });
+                canvas.add(vl);
+            }
 
             // テスト的に 3つの長方形を表示する
             const RectSize = { width: 160, height: 90 } as const;
@@ -183,9 +214,141 @@ const Fabric: React.VFC<Props> = ({ width, height, mode, strokeWidth, strokeColo
                         longpressTimer.current = undefined;
                     }
                 });
+                rect.on('modified', (event: fabric.IEvent<Event>) => {
+                    console.log('Rect#modified: ', event);
+                });
 
                 canvas.add(rect);
             });
+
+            // 梁要素
+            const vi = new Vector(150, 500);
+            const vj = new Vector(250, 400);
+            const beam = new fabric.Line([vi.x, vi.y, vj.x, vj.y], {
+                stroke: 'black',
+                strokeWidth: 3,
+            });
+            canvas.add(beam);
+
+            // 集中荷重的なもの
+            const forceDir = verticalNormalizeVector(vi, vj);
+            const forceLength = 90;
+            const forceHead = lerp(vi, vj, 0.3);
+            const forceTail = forceHead.clone().add(forceDir.clone().multiplyScalar(forceLength));
+
+            const force = createArrow(forceHead, forceTail, {
+                arrowEdgeSize: 12,
+                arrowWidth: 3,
+                fill: 'orange',
+            });
+            force.setControlsVisibility({
+                bl: false,
+                br: false,
+                mb: false,
+                ml: false,
+                mr: false,
+                mt: true,
+                tl: false,
+                tr: false,
+                mtr: true,
+            });
+
+            const beamDir = vj.clone().subtract(vi).normalize();
+            const lp = forceHead.clone().add(beamDir.clone().multiplyScalar(6));
+
+            const forceLabel = new fabric.Textbox('  10 kN', {
+                top: lp.y,
+                left: lp.x,
+                fill: 'orange',
+                fontSize: 10,
+                fontFamily: 'sans-serif',
+                width: forceLength,
+                textAlign: 'left',
+                angle: forceDir.angleDeg(),
+                evented: false,
+                selectable: false,
+            });
+
+            canvas.add(force);
+            canvas.add(forceLabel);
+
+            // 補助線の描画
+            const edgeSize = 8;
+            const guideHeight = 14;
+            const distance = 100;
+            const guideLineLeft = new fabric.Line([0, 0 - guideHeight / 2, 0, guideHeight / 2], {
+                stroke: 'silver',
+                strokeWidth: 1,
+            });
+            const guideLineRight = new fabric.Line(
+                [distance, 0 - guideHeight / 2, distance, guideHeight / 2],
+                {
+                    stroke: 'silver',
+                    strokeWidth: 1,
+                }
+            );
+            const edgeRight = new fabric.Triangle({
+                top: 0 - edgeSize / 2,
+                left: distance + 1,
+                width: edgeSize,
+                height: edgeSize,
+                fill: 'silver',
+                angle: 90,
+            });
+            const edgeLeft = new fabric.Triangle({
+                top: edgeSize / 2 + 1,
+                left: -1,
+                width: edgeSize,
+                height: edgeSize,
+                fill: 'silver',
+                angle: -90,
+            });
+            const arrowAxis = new fabric.Line([0, 0, distance, 0], {
+                stroke: 'silver',
+                strokeWidth: 1,
+            });
+            const label = new fabric.Textbox(`${distance}px`, {
+                top: edgeSize / 2,
+                left: 0,
+                fill: 'silver',
+                fontSize: 10,
+                fontFamily: 'sans-serif',
+                width: distance,
+                height: 10,
+                textAlign: 'center',
+            });
+            const arrow = new fabric.Group(
+                [guideLineLeft, edgeLeft, arrowAxis, edgeRight, guideLineRight, label],
+                {
+                    top: 100,
+                    left: 400,
+                    angle: 45,
+                    evented: false,
+                    selectable: false,
+                    originY: 'center',
+                }
+            );
+            canvas.add(arrow);
+
+            // 節点的なもの
+            const radius = 4;
+            const circle = new fabric.Circle({
+                top: 100,
+                left: 500,
+                radius,
+                fill: 'black',
+                originX: 'center',
+                originY: 'center',
+            });
+            canvas.add(circle);
+
+            const beamPoints: [number, number, number, number] = [300, 300, 400, 400];
+            const beam2 = createBeam(beamPoints);
+            canvas.add(beam2);
+
+            // 分布荷重的なもの
+            const trapezoid = createTrapezoid(beamPoints, 11, 10, 12, 0.2, 0.3, 90, true);
+            canvas.add(trapezoid);
 
             fabricRef.current = canvas;
         }
