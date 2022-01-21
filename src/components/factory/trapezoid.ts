@@ -32,6 +32,14 @@ const defaultTrapezoidLineOptions: fabric.ILineOptions = {
     stroke: TrapezoidColor,
     strokeWidth: 2,
 };
+const defaultTrapezoidLabelOptions: fabric.ITextboxOptions = {
+    fill: TrapezoidColor,
+    fontSize: 10,
+    fontFamily: 'sans-serif',
+    height: 10,
+    selectable: false,
+    evented: false,
+};
 
 /**
  * 分布荷重の矢印の長さ
@@ -43,6 +51,16 @@ const calcLength = (force: number, ave: number): number => {
         return TrapezoidArrowBaseLength;
     }
     return (force / ave) * TrapezoidArrowBaseLength;
+};
+
+const createTrapezoidLabel = (label: string, position: Vector, angle: number): fabric.Textbox => {
+    return new fabric.Textbox(label, {
+        ...defaultTrapezoidLabelOptions,
+        top: position.y,
+        left: position.x,
+        angle,
+        width: 140,
+    });
 };
 
 /**
@@ -131,6 +149,16 @@ export const createTrapezoid: CreateTrapezoidFunction = (
         ...defaultTrapezoidLineOptions,
     });
 
-    const group = new fabric.Group([line, ...shapes]);
+    // i端側ラベル
+    const li = bi.clone().add(beamDir.clone().multiplyScalar(5));
+    // j端側ラベル
+    const lj = bj.clone().add(beamDir.clone().multiplyScalar(5));
+    // ラベルの角度
+    const labelAngle = dir.angleDeg();
+
+    const labelI = createTrapezoidLabel(`  ${forceI} kN/m`, li, labelAngle);
+    const labelJ = createTrapezoidLabel(`  ${forceJ} kN/m`, lj, labelAngle);
+
+    const group = new fabric.Group([labelI, labelJ, line, ...shapes]);
     return group;
 };

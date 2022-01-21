@@ -9,21 +9,45 @@ type CreateBeamFunction = {
 };
 
 const createBeamByVectors = (vi: Vector, vj: Vector, options: fabric.ILineOptions): fabric.Line => {
-    const beam = new fabric.Line([vi.x, vi.y, vj.x, vj.y], {
+    // 方向
+    const dir = vj.clone().subtract(vi).normalize();
+    // 長さ
+    const distance = vi.distance(vj);
+    // 角度 (Vector では Y軸が上方向なので 上下反転させる)
+    const angle = 180 - dir.verticalAngleDeg();
+
+    const beam = new fabric.Line([0, 0, 0, distance], {
+        top: vi.y,
+        left: vi.x,
+        angle,
+        // 始点を基準に回転させる
+        originX: 'center',
+        originY: 'bottom',
+        centeredRotation: false,
+        // 描画設定
         stroke: 'black',
-        strokeWidth: 3,
+        strokeWidth: 4,
         ...options,
     });
+    beam.setControlsVisibility({
+        bl: false,
+        br: false,
+        mb: false,
+        ml: false,
+        mr: false,
+        mt: true,
+        tl: false,
+        tr: false,
+        mtr: true,
+    });
+
     return beam;
 };
 
 const createBeamByPoints = (points: LinePoints, options: fabric.ILineOptions): fabric.Line => {
-    const beam = new fabric.Line(points, {
-        stroke: 'black',
-        strokeWidth: 3,
-        ...options,
-    });
-    return beam;
+    const p1 = new Vector(points[0], points[1]);
+    const p2 = new Vector(points[2], points[3]);
+    return createBeamByVectors(p1, p2, options);
 };
 
 export const createBeam: CreateBeamFunction = (

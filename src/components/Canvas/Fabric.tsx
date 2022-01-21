@@ -5,6 +5,8 @@ import { CanvasSize } from '../../types/common';
 import { lerp, Vector, verticalNormalizeVector } from '../../util/vector';
 import { createArrow } from '../factory/arrow';
 import { createBeam } from '../factory/beam';
+import { createGuideLine } from '../factory/guide';
+import { createNode } from '../factory/node';
 import { createTrapezoid } from '../factory/trapezoid';
 
 type Props = CanvasSize & ICanvasContext;
@@ -172,7 +174,7 @@ const Fabric: React.VFC<Props> = ({ width, height, mode, strokeWidth, strokeColo
             // テスト的に 3つの長方形を表示する
             const RectSize = { width: 160, height: 90 } as const;
             const Interval = 25;
-            ['red', 'blue', 'green'].forEach((color, index) => {
+            ['red' /*'blue', 'green'*/].forEach((color, index) => {
                 const rect = new fabric.Rect({
                     left: 100 + (Interval + RectSize.width) * index,
                     top: 100 + (Interval + RectSize.height) * index,
@@ -224,10 +226,7 @@ const Fabric: React.VFC<Props> = ({ width, height, mode, strokeWidth, strokeColo
             // 梁要素
             const vi = new Vector(150, 500);
             const vj = new Vector(250, 400);
-            const beam = new fabric.Line([vi.x, vi.y, vj.x, vj.y], {
-                stroke: 'black',
-                strokeWidth: 3,
-            });
+            const beam = createBeam(vi, vj);
             canvas.add(beam);
 
             // 集中荷重的なもの
@@ -273,76 +272,29 @@ const Fabric: React.VFC<Props> = ({ width, height, mode, strokeWidth, strokeColo
             canvas.add(forceLabel);
 
             // 補助線の描画
-            const edgeSize = 8;
-            const guideHeight = 14;
-            const distance = 100;
-            const guideLineLeft = new fabric.Line([0, 0 - guideHeight / 2, 0, guideHeight / 2], {
-                stroke: 'silver',
-                strokeWidth: 1,
+            const data: [number, number, number, number][] = [
+                // 縦
+                [400, 100, 400, 200],
+                // 横
+                [500, 100, 700, 100],
+                // 右下がり
+                [600, 200, 800, 300],
+                // 右上がり
+                [600, 600, 800, 400],
+            ];
+
+            data.forEach((points) => {
+                const guide = createGuideLine(points);
+                canvas.add(guide);
             });
-            const guideLineRight = new fabric.Line(
-                [distance, 0 - guideHeight / 2, distance, guideHeight / 2],
-                {
-                    stroke: 'silver',
-                    strokeWidth: 1,
-                }
-            );
-            const edgeRight = new fabric.Triangle({
-                top: 0 - edgeSize / 2,
-                left: distance + 1,
-                width: edgeSize,
-                height: edgeSize,
-                fill: 'silver',
-                angle: 90,
-            });
-            const edgeLeft = new fabric.Triangle({
-                top: edgeSize / 2 + 1,
-                left: -1,
-                width: edgeSize,
-                height: edgeSize,
-                fill: 'silver',
-                angle: -90,
-            });
-            const arrowAxis = new fabric.Line([0, 0, distance, 0], {
-                stroke: 'silver',
-                strokeWidth: 1,
-            });
-            const label = new fabric.Textbox(`${distance}px`, {
-                top: edgeSize / 2,
-                left: 0,
-                fill: 'silver',
-                fontSize: 10,
-                fontFamily: 'sans-serif',
-                width: distance,
-                height: 10,
-                textAlign: 'center',
-            });
-            const arrow = new fabric.Group(
-                [guideLineLeft, edgeLeft, arrowAxis, edgeRight, guideLineRight, label],
-                {
-                    top: 100,
-                    left: 400,
-                    angle: 45,
-                    evented: false,
-                    selectable: false,
-                    originY: 'center',
-                }
-            );
-            canvas.add(arrow);
 
             // 節点的なもの
-            const radius = 4;
-            const circle = new fabric.Circle({
-                top: 100,
-                left: 500,
-                radius,
-                fill: 'black',
-                originX: 'center',
-                originY: 'center',
-            });
-            canvas.add(circle);
+            const node1 = createNode(vi.x, vi.y);
+            const node2 = createNode(vj.x, vj.y);
+            const node3 = createNode(400, 450);
+            canvas.add(node1, node2, node3);
 
-            const beamPoints: [number, number, number, number] = [300, 300, 400, 400];
+            const beamPoints: [number, number, number, number] = [250, 400, 400, 450];
             const beam2 = createBeam(beamPoints);
             canvas.add(beam2);
 
